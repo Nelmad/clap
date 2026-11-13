@@ -1,0 +1,32 @@
+name: Verify CI repairs
+on: push
+permissions:
+  contents: read
+jobs:
+  shells:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: rustup toolchain install 1.99 --profile minimal && rustup default 1.99
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+      - run: sudo apt-get update && sudo apt-get install -y elvish fish zsh
+      - run: cargo test -p clap_complete -F unstable-dynamic -F unstable-shell-tests --locked
+        env:
+          fish_features: no-query-term
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: rustup update stable && rustup default stable && rustup component add llvm-tools-preview
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+      - run: cargo install cargo-llvm-cov --locked
+      - run: cargo llvm-cov --workspace --cobertura --output-path cobertura.xml --locked
+      - run: test -s cobertura.xml
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25
+        with:
+          command: check
+          rust-version: stable
